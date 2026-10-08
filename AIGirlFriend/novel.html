@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>故事工坊 | 灵墨 心语</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --ink:#101828;--sub:#667085;--soft:#f5f7fb;--panel:#fff;--line:#d8e1ee;
+      --blue:#2563eb;--teal:#0f766e;--rose:#be3455;--amber:#b7791f;
+      --shadow:0 18px 48px rgba(15,23,42,.10)
+    }
+    html,body{height:100%;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;color:var(--ink);background:#eef3f8;line-height:1.6;overflow:hidden}
+    button,input,select,textarea{font:inherit}
+    button{border:0;cursor:pointer}
+    .app{height:100dvh;display:grid;grid-template-rows:1fr;background:linear-gradient(180deg,rgba(248,251,255,.94) 0%,rgba(238,244,248,.92) 48%,rgba(247,249,252,.96) 100%),url("https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1800&q=80") center/cover fixed}
+    .home-link{position:fixed;top:16px;right:clamp(14px,4vw,36px);z-index:20}
+    .brand{display:flex;align-items:center;gap:10px;min-width:0}
+    .brand-mark{width:36px;height:36px;border-radius:8px;background:#101828;color:#fff;display:grid;place-items:center;box-shadow:0 12px 28px rgba(16,24,40,.16)}
+    svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    .tools,.mode-tabs,.row{display:flex;align-items:center;gap:8px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:8px 13px;border-radius:8px;background:var(--blue);color:#fff;font-weight:800;box-shadow:0 12px 24px rgba(37,99,235,.16);transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+    .btn:hover{transform:translateY(-1px);box-shadow:0 16px 30px rgba(37,99,235,.22)}
+    .btn.secondary{background:#fff;color:#344054;border:1px solid var(--line);box-shadow:none}
+    .btn.secondary:hover{box-shadow:0 10px 20px rgba(15,23,42,.07)}
+    .btn.teal{background:var(--teal);box-shadow:0 12px 24px rgba(15,118,110,.15)}
+    .btn:disabled{opacity:.62;cursor:not-allowed;transform:none}
+    .pill{max-width:210px;padding:7px 10px;border-radius:999px;background:#eef5ff;color:#1d4ed8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .workspace{min-height:0;padding:68px clamp(14px,4vw,36px) 18px;display:grid;grid-template-columns:minmax(320px,390px) minmax(0,1fr);gap:14px}
+    .sidebar,.stage{min-height:0;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.94);box-shadow:var(--shadow);overflow:hidden}
+    .sidebar{display:grid;grid-template-rows:auto 1fr}
+    .panel-head{padding:15px 16px;border-bottom:1px solid #e5ebf4;background:#fbfdff}
+    .panel-head h2{font-size:18px;line-height:1.25}
+    .panel-head p{margin-top:3px;color:var(--sub);font-size:12px}
+    .side-scroll{min-height:0;overflow:auto;padding:14px 14px 18px}
+    .mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:13px}
+    .mode-btn{min-height:42px;border-radius:8px;background:#fff;color:#344054;border:1px solid var(--line);font-weight:900}
+    .mode-btn.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
+    .form-item{margin-bottom:12px}
+    label{display:block;color:#526179;font-size:13px;margin-bottom:6px}
+    input,select,textarea{width:100%;border:1px solid #ccd6e4;border-radius:8px;background:#fff;color:#172033;outline:none;padding:11px 12px}
+    textarea{min-height:88px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+    .main-btn{width:100%;min-height:46px;margin-top:2px}
+    .notice{margin-top:9px;color:var(--sub);font-size:12px;line-height:1.65}
+    .history{margin-top:16px;padding-top:14px;border-top:1px solid #e5ebf4}
+    .history-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .history-title strong{font-size:14px}
+    .history-list{display:grid;gap:9px}
+    .history-item{padding:11px;border:1px solid #e4eaf3;border-radius:8px;background:#fff;cursor:pointer;transition:border-color .18s ease,transform .18s ease}
+    .history-item:hover{border-color:#98bdfb;transform:translateY(-1px)}
+    .history-item strong{display:block;font-size:13px;margin-bottom:3px;color:#101828}
+    .history-item span{display:block;color:#667085;font-size:11px}
+    .history-item p{margin-top:6px;color:#475467;font-size:12px;line-height:1.5}
+    .stage{display:grid;grid-template-rows:auto 1fr auto}
+    .stage-head{padding:15px 16px;border-bottom:1px solid #e5ebf4;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fbfdff}
+    .stage-head h1{font-size:20px;line-height:1.25}
+    .stage-head p{margin-top:2px;color:var(--sub);font-size:12px}
+    .result-wrap{min-height:0;overflow:auto;padding:16px;background:linear-gradient(180deg,#fff,#f8fafc)}
+    .result{min-height:100%;padding:18px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#253044;white-space:pre-wrap;line-height:1.9;font-size:15px}
+    .empty{height:100%;min-height:340px;display:grid;place-items:center;text-align:center;color:#98a2b3}
+    .empty svg{width:42px;height:42px;margin:0 auto 10px;color:#94a3b8}
+    .stage-foot{padding:12px 16px;border-top:1px solid #e5ebf4;display:flex;align-items:center;justify-content:flex-start;gap:10px;background:#fff}
+    .status{color:#667085;font-size:12px}
+    .account{display:flex;align-items:center;gap:8px;min-width:0}
+    .modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.56)}
+    .auth-box{width:min(460px,100%);max-height:calc(100dvh - 28px);overflow:auto;padding:22px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 24px 70px rgba(15,23,42,.18)}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}
+    .close{width:34px;height:34px;border-radius:8px;background:#f1f5f9;color:#344054;font-size:22px}
+    .tabs{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+    .tab{padding:10px;border-radius:8px;background:#fff;color:#344054;border:1px solid var(--line);font-weight:800}
+    .tab.active{background:#2563eb;color:#fff;border-color:#2563eb}
+    .captcha-row{display:grid;grid-template-columns:minmax(0,1fr) 148px auto;gap:9px;align-items:center}
+    .captcha-row img{height:46px;width:148px;border:1px solid #ccd6e4;border-radius:8px;background:#f8fafc;display:block}
+    .captcha-refresh{width:46px;height:46px;padding:0}
+    .turnstile-wrap{display:none;margin-bottom:13px;min-height:65px}
+    .captcha-fallback.hidden{display:none}
+    @media(max-width:900px){
+      html,body{overflow:auto}
+      .app{min-height:100dvh;height:auto}
+      .workspace{grid-template-columns:1fr}
+      .sidebar,.stage{min-height:auto}
+      .result{min-height:380px}
+    }
+    @media(max-width:640px){
+      .brand{justify-content:space-between}
+      .brand-mark{width:32px;height:32px}
+      .home-link{top:12px;right:12px}
+      .home-link .btn{min-height:36px;padding:7px 10px;font-size:13px;box-shadow:0 10px 20px rgba(15,23,42,.08)}
+      .account{min-width:0}
+      .pill{max-width:none;border-radius:8px;background:#f1f5f9;color:#344054}
+      .workspace{padding:58px 10px 10px;gap:10px}
+      .panel-head,.stage-head{padding:12px}
+      .panel-head h2,.stage-head h1{font-size:17px}
+      .side-scroll{padding:12px}
+      .mode-btn{min-height:39px;font-size:13px}
+      input,select,textarea{min-height:42px;padding:10px 11px}
+      .stage-head{display:grid;grid-template-columns:1fr}
+      .tools{display:grid;grid-template-columns:repeat(3,1fr)}
+      .tools .btn{width:100%;min-height:36px;padding:7px 6px;font-size:12px;box-shadow:none}
+      .result-wrap{padding:10px}
+      .result{min-height:45dvh;padding:13px;font-size:14px;line-height:1.82}
+      .stage-foot{padding:10px 12px;display:block}
+      .modal{align-items:flex-start;padding:calc(env(safe-area-inset-top) + 12px) 10px calc(env(safe-area-inset-bottom) + 12px)}
+      .auth-box{max-height:calc(100dvh - 24px);padding:16px 14px}
+      .captcha-row{grid-template-columns:minmax(0,1fr) 128px}
+      .captcha-row img{width:128px;height:42px}
+      .captcha-refresh{grid-column:1/-1;width:100%;height:38px}
+      .row{display:grid;grid-template-columns:1fr}
+    }
+    @media(max-width:390px){
+      .workspace{padding:8px}
+      .tools{grid-template-columns:1fr}
+      .mode-tabs{grid-template-columns:1fr}
+      .captcha-row{grid-template-columns:1fr}
+      .captcha-row img{width:128px}
+    }
+  </style>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <link rel="stylesheet" href="assets/anime-theme.css" />
+</head>
+<body class="novel-page">
+  <div class="app">
+  <div class="home-link"><div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></span><div><div class="brand-name">灵墨 心语</div><div class="brand-caption">A LITTLE WORLD FOR US</div></div></div>
+    <button class="btn secondary" onclick="location.href='index.html'">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      回到首页
+    </button>
+  </div>
+
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="panel-head">
+        <h2>创作参数</h2>
+        <p id="costNotice">生成大纲成功后扣除 20 点，失败不扣费</p>
+      </div>
+      <div class="side-scroll">
+        <div class="mode-tabs">
+          <button class="mode-btn active" id="outlineTab" onclick="switchCreateMode('outline')">生成大纲</button>
+          <button class="mode-btn" id="contentTab" onclick="switchCreateMode('content')">生成正文</button>
+        </div>
+
+        <div class="form-item">
+          <label for="novelType">小说类型</label>
+          <select id="novelType">
+            <option>玄幻</option>
+            <option>都市</option>
+            <option>科幻</option>
+            <option>仙侠</option>
+            <option>轻小说</option>
+            <option>悬疑</option>
+          </select>
+        </div>
+        <div class="form-item">
+          <label for="protagonist">主角设定</label>
+          <input id="protagonist" placeholder="例如：落魄少年，觉醒时间回溯能力" />
+        </div>
+        <div class="form-item">
+          <label for="background">世界背景</label>
+          <textarea id="background" placeholder="例如：灵气复苏后的现代都市，各大势力争夺秘境资源"></textarea>
+        </div>
+        <div class="form-item">
+          <label for="style">写作风格</label>
+          <select id="style">
+            <option>起点风</option>
+            <option>番茄风</option>
+            <option>晋江风</option>
+            <option>轻小说风</option>
+          </select>
+        </div>
+
+        <div id="contentFields" style="display:none">
+          <div class="form-item">
+            <label for="outlineText">已有大纲 / 前文</label>
+            <textarea id="outlineText" placeholder="粘贴大纲或前文，AI 会继续写正文"></textarea>
+          </div>
+          <div class="form-item">
+            <label for="chapterTitle">章节标题</label>
+            <input id="chapterTitle" value="第一章" />
+          </div>
+          <div class="form-item">
+            <label for="chapterGoal">本章目标</label>
+            <textarea id="chapterGoal" placeholder="例如：主角首次觉醒能力，被迫卷入秘境争夺"></textarea>
+          </div>
+        </div>
+
+        <div class="form-item">
+          <label for="wordCount">目标字数</label>
+          <input id="wordCount" type="number" value="2000" min="500" max="8000" />
+        </div>
+        <button class="btn teal main-btn" id="generateBtn" onclick="generateAI()">
+          <svg viewBox="0 0 24 24"><path d="M12 3v4"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="m5.6 5.6 2.8 2.8"/><path d="m15.6 15.6 2.8 2.8"/><path d="m18.4 5.6-2.8 2.8"/><path d="m8.4 15.6-2.8 2.8"/></svg>
+          <span id="generateBtnText">生成小说大纲</span>
+        </button>
+
+        <section class="history">
+          <div class="history-title">
+            <strong>最近记录</strong>
+            <button class="btn secondary" onclick="loadHistory()">刷新</button>
+          </div>
+          <div class="history-list" id="historyList">
+            <div class="history-item"><strong>未登录</strong><span>登录后显示历史记录</span></div>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="stage">
+      <div class="stage-head">
+        <div>
+          <h1 id="stageTitle">小说生成区</h1>
+          <p id="resultMeta">填写左侧参数后开始生成</p>
+        </div>
+        <div class="tools">
+          <button class="btn secondary" onclick="copyResult()">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            复制
+          </button>
+          <button class="btn secondary" onclick="downloadResult()">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            下载
+          </button>
+          <button class="btn secondary" onclick="clearResult()">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/></svg>
+            清空
+          </button>
+        </div>
+      </div>
+      <div class="result-wrap">
+        <div class="result" id="result">
+          <div class="empty">
+            <div>
+              <svg viewBox="0 0 24 24"><path d="M4 19.5V5a2 2 0 0 1 2-2h11a3 3 0 0 1 3 3v14H6a2 2 0 0 1-2-2.5Z"/><path d="M8 7h8"/><path d="M8 11h7"/></svg>
+              <div>这里会显示生成结果</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="stage-foot">
+        <span class="status" id="statusText">准备就绪</span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="authModal">
+  <div class="auth-box">
+    <div class="modal-head">
+      <h3>用户登录 / 注册</h3>
+      <button class="close" onclick="closeAuth()">×</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="loginTab" onclick="switchAuth('login')">登录</button>
+      <button class="tab" id="registerTab" onclick="switchAuth('register')">注册</button>
+    </div>
+    <div id="loginForm">
+      <div class="form-item"><label for="loginAccount">手机号 / 用户名</label><input id="loginAccount" placeholder="请输入账号" /></div>
+      <div class="form-item"><label for="loginPassword">密码</label><input id="loginPassword" type="password" placeholder="请输入密码" /></div>
+      <div class="turnstile-wrap" id="loginTurnstileWrap"><div id="loginTurnstileWidget"></div></div>
+      <div class="form-item captcha-fallback hidden" id="loginCaptchaFallback">
+        <label for="loginCaptcha">图片验证码</label>
+        <div class="captcha-row">
+          <input id="loginCaptcha" placeholder="输入图片字符" autocomplete="off" />
+          <img id="loginCaptchaImage" alt="图片验证码" />
+          <button class="btn secondary captcha-refresh" type="button" onclick="loadLoginCaptcha(true)" title="刷新验证码">↻</button>
+        </div>
+      </div>
+      <div class="notice" id="loginVerificationNotice" role="status" aria-live="polite"></div>
+      <button class="btn main-btn" onclick="loginTurnstile()">登录</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="form-item"><label for="regAccount">手机号 / 用户名</label><input id="regAccount" placeholder="请输入账号" /></div>
+      <div class="form-item"><label for="regPassword">密码</label><input id="regPassword" type="password" placeholder="至少 6 位" /></div>
+      <div class="turnstile-wrap" id="turnstileWrap"><div id="turnstileWidget"></div></div>
+      <div class="form-item captcha-fallback" id="captchaFallback">
+        <label for="regCaptcha">图片人机验证</label>
+        <div class="captcha-row">
+          <input id="regCaptcha" placeholder="输入图片字符" autocomplete="off" />
+          <img id="captchaImage" alt="图片验证码" />
+          <button class="btn secondary captcha-refresh" type="button" onclick="loadCaptcha()" title="刷新验证码">↻</button>
+        </div>
+      </div>
+      <div class="form-item">
+        <label for="regCode">验证码</label>
+        <div class="row">
+          <input id="regCode" placeholder="输入验证码" />
+          <button class="btn secondary" onclick="sendCodeTurnstile()">发送验证码</button>
+        </div>
+      </div>
+      <button class="btn main-btn" onclick="registerTurnstile()">注册</button>
+      <div class="notice" id="codeNotice">发送验证码前，请先完成人机验证</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : window.location.origin;
+let authMode = "login";
+let createMode = "outline";
+let latestText = "";
+let registerCaptchaToken = "";
+let turnstileEnabled = false;
+let turnstileSiteKey = "";
+let turnstileWidgetId = null;
+let turnstileToken = "";
+let loginTurnstileWidgetId = null;
+let loginTurnstileToken = "";
+let loginCaptchaToken = "";
+let turnstileFallback = false;
+let loginSubmitting = false;
+let turnstileWaitStarted = 0;
+let loginTurnstileWaitStarted = 0;
+const TURNSTILE_LOAD_TIMEOUT_MS = 12000;
+
+function token(){return localStorage.getItem("token") || ""}
+function authHeaders(){return {"Content-Type":"application/json","Authorization":"Bearer "+token()}}
+function cleanText(text){return (text || "").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s?/g,"").trim()}
+function escapeHtml(str){return String(str || "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+function setOptionalText(id, text){const el = document.getElementById(id); if(el)el.innerText = text}
+function setOptionalDisplay(id, display){const el = document.getElementById(id); if(el)el.style.display = display}
+function setStatus(text){document.getElementById("statusText").innerText = text}
+function setResult(text, meta){
+  latestText = text || "";
+  document.getElementById("result").innerText = latestText || "这里会显示生成结果";
+  document.getElementById("resultMeta").innerText = meta || "生成完成";
+}
+
+function switchCreateMode(mode){
+  createMode = mode;
+  document.getElementById("outlineTab").classList.toggle("active", mode === "outline");
+  document.getElementById("contentTab").classList.toggle("active", mode === "content");
+  document.getElementById("contentFields").style.display = mode === "content" ? "block" : "none";
+  document.getElementById("generateBtnText").innerText = mode === "outline" ? "生成小说大纲" : "生成章节正文";
+  document.getElementById("stageTitle").innerText = mode === "outline" ? "大纲生成区" : "正文生成区";
+  document.getElementById("costNotice").innerText = mode === "outline" ? "生成大纲成功后扣除 20 点，失败不扣费" : "生成正文成功后扣除 30 点，失败不扣费";
+}
+
+async function loadTurnstileConfig(){
+  if(turnstileSiteKey || turnstileEnabled)return;
+  try{
+    const res = await fetch(API_BASE + "/api/auth/turnstile-config");
+    const json = await res.json();
+    turnstileEnabled = !!(json.success && json.enabled && json.site_key);
+    turnstileSiteKey = json.site_key || "";
+    document.getElementById("turnstileWrap").style.display = turnstileEnabled ? "block" : "none";
+    document.getElementById("loginTurnstileWrap").style.display = turnstileEnabled ? "block" : "none";
+    document.getElementById("captchaFallback").classList.toggle("hidden", turnstileEnabled);
+    document.getElementById("loginCaptchaFallback").classList.add("hidden");
+  }catch(e){
+    turnstileEnabled = false;
+  }
+}
+function useCaptchaFallback(){
+  turnstileFallback = true;
+  turnstileEnabled = false;
+  turnstileToken = "";
+  loginTurnstileToken = "";
+  document.getElementById("turnstileWrap").style.display = "none";
+  document.getElementById("loginTurnstileWrap").style.display = "none";
+  document.getElementById("captchaFallback").classList.remove("hidden");
+  document.getElementById("loginCaptchaFallback").classList.remove("hidden");
+  loadCaptcha(true);
+  loadLoginCaptcha(true);
+}
+function renderTurnstile(){
+  if(!turnstileEnabled || !turnstileSiteKey)return;
+  if(!turnstileWaitStarted)turnstileWaitStarted = Date.now();
+  if(!window.turnstile){
+    const delayed = Date.now() - turnstileWaitStarted > TURNSTILE_LOAD_TIMEOUT_MS;
+    setOptionalText("codeNotice", delayed ? "Cloudflare 安全验证加载较慢，仍在尝试连接。如持续无法加载，请刷新页面后重试。" : "正在加载 Cloudflare 安全验证…");
+    setTimeout(renderTurnstile, delayed ? 1000 : 300);
+    return;
+  }
+  turnstileWaitStarted = 0;
+  setOptionalText("codeNotice", "请先完成 Cloudflare 安全验证，再发送验证码");
+  if(turnstileWidgetId !== null){window.turnstile.reset(turnstileWidgetId);turnstileToken = "";return}
+  turnstileWidgetId = window.turnstile.render("#turnstileWidget", {
+    sitekey: turnstileSiteKey,
+    theme: "light",
+    callback: value => {turnstileToken = value;registerCaptchaToken = value;document.getElementById("codeNotice").innerText = "真人验证已完成，可以发送验证码"},
+    "expired-callback": () => {turnstileToken = "";document.getElementById("codeNotice").innerText = "真人验证已过期，请重新验证"},
+    "error-callback": () => {turnstileToken = "";document.getElementById("codeNotice").innerText = "真人验证加载失败，请刷新后重试"}
+  });
+}
+function resetTurnstile(){
+  turnstileToken = "";
+  if(window.turnstile && turnstileWidgetId !== null)window.turnstile.reset(turnstileWidgetId);
+}
+function renderLoginTurnstile(){
+  if(!turnstileEnabled || !turnstileSiteKey)return;
+  if(!loginTurnstileWaitStarted)loginTurnstileWaitStarted = Date.now();
+  if(!window.turnstile){
+    const delayed = Date.now() - loginTurnstileWaitStarted > TURNSTILE_LOAD_TIMEOUT_MS;
+    setOptionalText("loginVerificationNotice", delayed ? "Cloudflare 安全验证加载较慢，仍在尝试连接。如持续无法加载，请刷新页面后重试。" : "正在加载 Cloudflare 安全验证…");
+    setTimeout(renderLoginTurnstile, delayed ? 1000 : 300);
+    return;
+  }
+  loginTurnstileWaitStarted = 0;
+  setOptionalText("loginVerificationNotice", "请完成 Cloudflare 安全验证后登录");
+  if(loginTurnstileWidgetId !== null){window.turnstile.reset(loginTurnstileWidgetId);loginTurnstileToken = "";return}
+  loginTurnstileWidgetId = window.turnstile.render("#loginTurnstileWidget", {
+    sitekey: turnstileSiteKey,
+    theme: "light",
+    callback: value => {loginTurnstileToken = value;setOptionalText("loginVerificationNotice", "安全验证已完成，可以登录")},
+    "expired-callback": () => {loginTurnstileToken = "";setOptionalText("loginVerificationNotice", "安全验证已过期，请重新完成验证")},
+    "error-callback": () => {loginTurnstileToken = "";setOptionalText("loginVerificationNotice", "Cloudflare 安全验证加载失败，请刷新页面后重试。")}
+  });
+}
+function resetLoginTurnstile(){
+  loginTurnstileToken = "";
+  if(window.turnstile && loginTurnstileWidgetId !== null)window.turnstile.reset(loginTurnstileWidgetId);
+}
+
+async function openAuth(){
+  document.getElementById("authModal").style.display = "flex";
+  await loadTurnstileConfig();
+  if(authMode === "login")renderLoginTurnstile();
+  if(authMode === "register"){
+    if(turnstileEnabled)renderTurnstile();
+    else loadCaptcha();
+  }
+}
+function closeAuth(){document.getElementById("authModal").style.display = "none"}
+async function switchAuth(mode){
+  authMode = mode;
+  document.getElementById("loginTab").classList.toggle("active", mode === "login");
+  document.getElementById("registerTab").classList.toggle("active", mode === "register");
+  document.getElementById("loginForm").style.display = mode === "login" ? "block" : "none";
+  document.getElementById("registerForm").style.display = mode === "register" ? "block" : "none";
+  await loadTurnstileConfig();
+  if(mode === "login")renderLoginTurnstile();
+  if(mode === "register"){
+    if(turnstileEnabled)renderTurnstile();
+    else loadCaptcha();
+  }
+}
+async function loadCaptcha(force=false){
+  try{
+    if(turnstileEnabled&&!force)return;
+    const res = await fetch(API_BASE + "/api/auth/captcha");
+    const json = await res.json();
+    if(json.success){
+      registerCaptchaToken = json.token;
+      document.getElementById("captchaImage").src = json.image;
+      document.getElementById("regCaptcha").value = "";
+      document.getElementById("codeNotice").innerText = "发送验证码前，请先输入图片验证码";
+    }
+  }catch(e){
+    document.getElementById("codeNotice").innerText = "图片验证码加载失败，请确认后端服务已启动。";
+  }
+}
+async function loadLoginCaptcha(force=false){
+  try{
+    if(turnstileEnabled&&!force)return;
+    const res = await fetch(API_BASE + "/api/auth/captcha");
+    const json = await res.json();
+    if(json.success){
+      loginCaptchaToken = json.token;
+      document.getElementById("loginCaptchaImage").src = json.image;
+      document.getElementById("loginCaptcha").value = "";
+    }
+  }catch(e){}
+}
+async function sendCodeTurnstile(){
+  const account = document.getElementById("regAccount").value.trim();
+  const captcha_code = document.getElementById("regCaptcha").value.trim();
+  if(!account){alert("请先输入账号/手机号");return}
+  if(turnstileEnabled && !turnstileToken){alert("请先完成 Cloudflare 真人验证");return}
+  if((!turnstileEnabled || turnstileFallback) && !captcha_code){alert("请先输入图片验证码");return}
+  try{
+    const res = await fetch(API_BASE + "/api/auth/send-code", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({account,captcha_token:registerCaptchaToken,captcha_code,turnstile_token:turnstileToken})
+    });
+    const json = await res.json();
+    if(json.success){
+      document.getElementById("codeNotice").innerText = "开发验证码：" + json.dev_code + "，5 分钟内有效。";
+    }else{
+      alert(json.message || "发送失败");
+      if(turnstileEnabled)resetTurnstile();else await loadCaptcha(true);
+    }
+  }catch(e){
+    alert("验证码发送失败：请确认后端服务已启动。");
+  }
+}
+async function registerTurnstile(){
+  const account = document.getElementById("regAccount").value.trim();
+  const password = document.getElementById("regPassword").value;
+  const code = document.getElementById("regCode").value.trim();
+  if(turnstileEnabled && !registerCaptchaToken){alert("请先完成 Cloudflare 真人验证并发送验证码");return}
+  const res = await fetch(API_BASE + "/api/auth/register", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({account,password,code,captcha_token:registerCaptchaToken,turnstile_token:registerCaptchaToken})
+  });
+  const json = await res.json();
+  if(json.success){
+    alert("注册成功，请登录");
+    switchAuth("login");
+    document.getElementById("loginAccount").value = account;
+  }else{
+    alert(json.message || "注册失败");
+  }
+}
+async function loginTurnstile(){
+  if(loginSubmitting)return;
+  const account = document.getElementById("loginAccount").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const captcha_code = document.getElementById("loginCaptcha").value.trim();
+  if(turnstileEnabled && !loginTurnstileToken){alert("请先完成 Cloudflare 真人验证");return}
+  if((!turnstileEnabled || turnstileFallback) && !captcha_code){alert("请先输入图片验证码");return}
+  loginSubmitting = true;
+  try{
+    const res = await fetch(API_BASE + "/api/auth/login", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({account,password,turnstile_token:loginTurnstileToken,captcha_token:loginCaptchaToken,captcha_code})
+    });
+    const json = await res.json();
+    if(json.success){
+      localStorage.setItem("token", json.token);
+      closeAuth();
+      resetLoginTurnstile();
+      await loadMe();
+      await loadHistory();
+    }else{
+      alert(json.message || "登录失败");
+      resetLoginTurnstile();
+      if(!turnstileEnabled || turnstileFallback)await loadLoginCaptcha(true);
+    }
+  }catch(e){
+    alert("登录失败：请确认后端服务已启动。");
+  }finally{
+    loginSubmitting = false;
+  }
+}
+function logout(){
+  localStorage.removeItem("token");
+  setOptionalText("userInfo", "未登录");
+  setOptionalText("balance", "0 点");
+  setOptionalDisplay("loginBtn", "inline-flex");
+  setOptionalDisplay("logoutBtn", "none");
+  document.getElementById("historyList").innerHTML = '<div class="history-item"><strong>未登录</strong><span>登录后显示历史记录</span></div>';
+}
+async function loadMe(){
+  if(!token())return;
+  try{
+    const res = await fetch(API_BASE + "/api/me", {headers:authHeaders()});
+    const json = await res.json();
+    if(json.success){
+      setOptionalText("userInfo", json.user.account);
+      setOptionalText("balance", json.user.balance + " 点");
+      setOptionalDisplay("loginBtn", "none");
+      setOptionalDisplay("logoutBtn", "inline-flex");
+    }else{
+      logout();
+    }
+  }catch(e){
+    setStatus("账号信息加载失败");
+  }
+}
+async function loadHistory(){
+  const box = document.getElementById("historyList");
+  if(!token()){
+    box.innerHTML = '<div class="history-item"><strong>未登录</strong><span>登录后显示历史记录</span></div>';
+    return;
+  }
+  try{
+    const res = await fetch(API_BASE + "/api/ai/history", {headers:authHeaders()});
+    const json = await res.json();
+    if(!json.success || !json.items.length){
+      box.innerHTML = '<div class="history-item"><strong>暂无记录</strong><span>生成内容后会自动保存</span></div>';
+      return;
+    }
+    window.__historyItems = json.items;
+    box.innerHTML = json.items.map((item,index)=>`
+      <div class="history-item" onclick="showHistory(${index})">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span>${item.action === "generate_outline" ? "大纲" : "正文"} / 扣 ${item.cost_points} 点 / ${escapeHtml(item.created_at)}</span>
+        <p>${escapeHtml(cleanText(item.content).slice(0,72))}...</p>
+      </div>
+    `).join("");
+  }catch(e){
+    box.innerHTML = '<div class="history-item"><strong>加载失败</strong><span>请确认后端服务正在运行</span></div>';
+  }
+}
+function showHistory(index){
+  const item = window.__historyItems && window.__historyItems[index];
+  if(!item)return;
+  setResult(item.content, item.title + " / " + item.created_at);
+}
+async function generateAI(){
+  if(!token()){
+    alert("请先登录");
+    openAuth();
+    return;
+  }
+  const base = {
+    novel_type: document.getElementById("novelType").value,
+    protagonist: document.getElementById("protagonist").value.trim(),
+    background: document.getElementById("background").value.trim(),
+    style: document.getElementById("style").value,
+    word_count: Number(document.getElementById("wordCount").value || 2000)
+  };
+  if(!base.protagonist || !base.background){
+    alert("请填写主角设定和世界背景");
+    return;
+  }
+  let url = "/api/ai/generate-outline";
+  let body = base;
+  if(createMode === "content"){
+    url = "/api/ai/generate-content";
+    body = {
+      ...base,
+      outline: document.getElementById("outlineText").value.trim(),
+      chapter_title: document.getElementById("chapterTitle").value.trim() || "第一章",
+      chapter_goal: document.getElementById("chapterGoal").value.trim()
+    };
+  }
+  const btn = document.getElementById("generateBtn");
+  btn.disabled = true;
+  setStatus(createMode === "outline" ? "正在生成大纲..." : "正在生成正文...");
+  setResult("正在生成，请稍等...", "请求已发送");
+  try{
+    const res = await fetch(API_BASE + url, {method:"POST",headers:authHeaders(),body:JSON.stringify(body)});
+    const json = await res.json();
+    if(json.success){
+      setResult(json.content, "生成完成 / 扣除 " + json.cost + " 点");
+      setStatus("生成完成");
+      await loadMe();
+      await loadHistory();
+    }else{
+      setResult("生成失败：\n" + (json.message || "未知错误"), "生成失败");
+      setStatus("生成失败");
+    }
+  }catch(e){
+    setResult("请求失败：\n" + e.message, "请求失败");
+    setStatus("请求失败");
+  }finally{
+    btn.disabled = false;
+  }
+}
+async function copyResult(){
+  const text = cleanText(latestText);
+  if(!text){alert("没有可复制的内容");return}
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    const area = document.createElement("textarea");
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    document.body.removeChild(area);
+  }
+  setStatus("已复制到剪贴板");
+}
+function downloadResult(){
+  const text = cleanText(latestText);
+  if(!text){alert("没有可下载的内容");return}
+  const filename = (createMode === "outline" ? "小说大纲" : "章节正文") + "-" + new Date().toISOString().slice(0,19).replaceAll(":","-") + ".txt";
+  const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus("已准备下载");
+}
+function clearResult(){
+  latestText = "";
+  document.getElementById("result").innerHTML = '<div class="empty"><div><svg viewBox="0 0 24 24"><path d="M4 19.5V5a2 2 0 0 1 2-2h11a3 3 0 0 1 3 3v14H6a2 2 0 0 1-2-2.5Z"/><path d="M8 7h8"/><path d="M8 11h7"/></svg><div>这里会显示生成结果</div></div></div>';
+  document.getElementById("resultMeta").innerText = "填写左侧参数后开始生成";
+  setStatus("准备就绪");
+}
+
+loadTurnstileConfig();
+loadMe();
+loadHistory();
+</script>
+</body>
+</html>

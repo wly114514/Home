@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>灵墨 AI 管理后台</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#e8ebef;--panel:#f7f7f7;--side:#e7e8eb;--chat:#f3f4f6;--line:#d8dde5;--ink:#111827;--sub:#667085;--green:#07c160;--blue:#2563eb;--danger:#dc2626}
+    html,body{height:100%;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;color:var(--ink);background:var(--bg);overflow:hidden}
+    button,input{font:inherit}
+    button{border:0;cursor:pointer}
+    .login{height:100%;display:grid;place-items:center;padding:18px;background:linear-gradient(135deg,#e8f4ef,#eef2f7)}
+    .login-card{width:min(390px,100%);padding:26px;border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 24px 70px rgba(15,23,42,.15)}
+    .login-card h1{font-size:24px;margin-bottom:8px}
+    .login-card p{color:var(--sub);font-size:14px;margin-bottom:18px}
+    .login-card input{width:100%;height:44px;border:1px solid #cfd6df;border-radius:8px;padding:0 12px;outline:none;margin-bottom:12px}
+    .login-card input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(7,193,96,.12)}
+    .btn{min-height:38px;padding:8px 14px;border-radius:8px;background:var(--green);color:#fff;font-weight:800}
+    .btn.secondary{background:#fff;color:#344054;border:1px solid var(--line)}
+    .btn.blue{background:var(--blue)}
+    .app{height:100%;display:none;grid-template-columns:300px 1fr;background:#fff}
+    .sidebar{min-width:0;background:var(--side);border-right:1px solid #cfd5dd;display:grid;grid-template-rows:auto auto 1fr}
+    .top{height:62px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px;border-bottom:1px solid #d6dbe3}
+    .brand{font-size:18px;font-weight:900}
+    .search{padding:10px 12px;border-bottom:1px solid #d6dbe3}
+    .search input{width:100%;height:36px;border:1px solid #cfd6df;border-radius:8px;background:#fff;padding:0 10px;outline:none}
+    .users{overflow:auto}
+    .user{width:100%;display:grid;grid-template-columns:42px minmax(0,1fr);gap:10px;padding:12px 14px;text-align:left;background:transparent;border-bottom:1px solid rgba(207,213,221,.8)}
+    .user:hover,.user.active{background:#dfe3e8}
+    .avatar{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,#07c160,#2dd4bf);display:grid;place-items:center;color:#fff;font-weight:900}
+    .user strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .user span{display:block;color:#667085;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .main{min-width:0;display:grid;grid-template-rows:auto auto 1fr;background:var(--chat)}
+    .toolbar{height:auto;min-height:62px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 16px;background:#f7f8fa;border-bottom:1px solid var(--line)}
+    .stats{display:flex;gap:8px;flex-wrap:wrap}
+    .stat{padding:7px 10px;border-radius:8px;background:#fff;border:1px solid var(--line);color:#344054;font-size:13px}
+    .stat b{color:#0f766e}
+    .tabs{display:flex;gap:8px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line);overflow:auto}
+    .tab{padding:8px 12px;border-radius:8px;background:#f1f5f9;color:#344054;font-weight:800;white-space:nowrap}
+    .tab.active{background:#dcfce7;color:#047857}
+    .content{min-height:0;overflow:auto;padding:18px;scrollbar-gutter:stable}
+    .content::-webkit-scrollbar,.users::-webkit-scrollbar,.table-wrap::-webkit-scrollbar,.messages-wrap::-webkit-scrollbar{width:10px;height:10px}
+    .content::-webkit-scrollbar-thumb,.users::-webkit-scrollbar-thumb,.table-wrap::-webkit-scrollbar-thumb,.messages-wrap::-webkit-scrollbar-thumb{background:#b8c2cf;border-radius:999px;border:2px solid transparent;background-clip:content-box}
+    .content::-webkit-scrollbar-track,.users::-webkit-scrollbar-track,.table-wrap::-webkit-scrollbar-track,.messages-wrap::-webkit-scrollbar-track{background:rgba(226,232,240,.7)}
+    .empty{height:100%;display:grid;place-items:center;color:#98a2b3}
+    .message-tools{max-width:980px;margin:0 auto 12px;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+    .message-tools label{font-size:13px;color:var(--sub)}
+    .message-tools select{height:36px;min-width:230px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:0 10px;color:#1f2937;outline:none}
+    .message-tools select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(7,193,96,.12)}
+    .messages-wrap{max-height:calc(100dvh - 300px);overflow:auto;padding:2px 4px 12px;scrollbar-gutter:stable}
+    .messages{display:grid;gap:12px;max-width:980px;margin:0 auto}
+    .msg{display:flex;gap:10px;align-items:flex-start}
+    .msg.user{flex-direction:row-reverse}
+    .msg .bubble{max-width:min(720px,78%);padding:10px 12px;border-radius:8px;background:#fff;border:1px solid #e5e7eb;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+    .msg.user .bubble{background:#95ec69;border-color:#95ec69}
+    .meta{font-size:12px;color:#98a2b3;margin-bottom:4px}
+    .table-wrap{max-height:calc(100dvh - 250px);overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;scrollbar-gutter:stable}
+    .table{width:100%;min-width:860px;border-collapse:collapse;background:#fff}
+    .table th,.table td{padding:10px;border-bottom:1px solid #edf0f5;text-align:left;font-size:13px;vertical-align:top}
+    .table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#475467;white-space:nowrap}
+    .table tr:last-child td{border-bottom:0}
+    .clip{max-width:520px;white-space:pre-wrap;word-break:break-word}
+    .detail-head{max-width:980px;margin:0 auto 14px;padding:14px;border:1px solid var(--line);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .detail-head h2{font-size:20px}
+    .detail-head p{color:var(--sub);font-size:13px}
+    @media(max-width:780px){
+      body{overflow:auto}
+      .app{height:auto;min-height:100dvh;grid-template-columns:1fr}
+      .sidebar{height:42dvh}
+      .toolbar{grid-template-columns:1fr}
+      .content{padding:12px}
+      .table-wrap{max-height:62dvh}
+      .messages-wrap{max-height:58dvh}
+      .message-tools{align-items:stretch;justify-content:stretch;flex-direction:column}
+      .message-tools select{width:100%;min-width:0}
+      .msg .bubble{max-width:82%}
+    }
+    .service-alert{position:fixed;top:72px;left:50%;z-index:90;width:min(760px,calc(100vw - 28px));height:34px;overflow:hidden;transform:translateX(-50%);border:1px solid rgba(255,251,235,.72);border-radius:7px;background:rgba(120,53,15,.78);box-shadow:0 10px 24px rgba(120,53,15,.16);backdrop-filter:blur(10px);color:#fff7ed;pointer-events:none}
+    .service-alert__track{display:flex;width:max-content;height:100%;align-items:center;white-space:nowrap;animation:service-alert-scroll 28s linear infinite;will-change:transform}
+    .service-alert__track span{padding:0 32px;font-size:13px;font-weight:700}
+    @keyframes service-alert-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    @media(prefers-reduced-motion:reduce){.service-alert__track{animation:none}}
+  </style>
+</head>
+<body>
+  <div class="service-alert" role="status" aria-label="图片生成服务公告"><div class="service-alert__track"><span>图片生成功能暂时无法使用：图片服务商当前没有可用的上游账号或渠道。我们正在处理，给您带来不便深感抱歉</span><span aria-hidden="true">图片生成功能暂时无法使用：图片服务商当前没有可用的上游账号或渠道。我们正在处理，给您带来不便深感抱歉</span></div></div>
+  <section class="login" id="loginView">
+    <div class="login-card">
+      <h1>管理员后台</h1>
+      <p>此页面没有前台入口，仅供管理员通过网址访问</p>
+      <input id="adminPassword" type="password" placeholder="输入管理员密码" autocomplete="current-password" />
+      <button class="btn" onclick="adminLogin()">进入后台</button>
+    </div>
+  </section>
+
+  <section class="app" id="appView">
+    <aside class="sidebar">
+      <div class="top">
+        <div class="brand">管理窗口</div>
+        <button class="btn secondary" onclick="logoutAdmin()">退出</button>
+      </div>
+      <div class="search"><input id="searchInput" placeholder="搜索用户账号" onkeydown="if(event.key==='Enter')boot()" /></div>
+      <div class="users" id="userList"></div>
+    </aside>
+    <main class="main">
+      <div class="toolbar">
+        <div class="stats" id="stats"></div>
+        <button class="btn blue" onclick="downloadExcel()">一键生成 Excel 并下载</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="messages" onclick="switchTab('messages')">聊天记录</button>
+        <button class="tab" data-tab="wallet" onclick="switchTab('wallet')">点数流水</button>
+        <button class="tab" data-tab="login" onclick="switchTab('login')">登录记录</button>
+        <button class="tab" data-tab="novel" onclick="switchTab('novel')">小说记录</button>
+        <button class="tab" data-tab="orders" onclick="switchTab('orders')">充值订单</button>
+      </div>
+      <div class="content" id="content"><div class="empty">请选择左侧用户</div></div>
+    </main>
+  </section>
+
+<script>
+const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : window.location.origin;
+let adminToken = localStorage.getItem("adminToken") || "";
+let users = [];
+let currentUser = null;
+let currentDetail = null;
+let currentTab = "messages";
+let syncedAt = "";
+let currentProfileId = 0;
+
+function headers(){return {"Content-Type":"application/json","Authorization":"Bearer "+adminToken}}
+function escapeHtml(value){return String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
+function showApp(){document.getElementById("loginView").style.display="none";document.getElementById("appView").style.display="grid"}
+function showLogin(){document.getElementById("loginView").style.display="grid";document.getElementById("appView").style.display="none"}
+
+async function adminLogin(){
+  const password = document.getElementById("adminPassword").value;
+  const res = await fetch(API_BASE+"/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});
+  const json = await res.json();
+  if(!json.success){alert(json.message||"登录失败");return}
+  adminToken = json.token;
+  localStorage.setItem("adminToken", adminToken);
+  showApp();
+  await boot();
+}
+function logoutAdmin(){localStorage.removeItem("adminToken");adminToken="";showLogin()}
+async function api(url){
+  const res = await fetch(API_BASE+url,{headers:headers()});
+  const json = await res.json();
+  if(!json.success){if(json.message)alert(json.message); if(json.message&&json.message.includes("过期"))logoutAdmin(); throw new Error(json.message||"request failed")}
+  return json;
+}
+function renderStats(s){
+  document.getElementById("stats").innerHTML = `
+    <span class="stat">用户 <b>${s.total_users}</b></span>
+    <span class="stat">总点数 <b>${s.total_balance}</b></span>
+    <span class="stat">聊天 <b>${s.total_messages}</b></span>
+    <span class="stat">订单 <b>${s.total_orders}</b></span>
+    <span class="stat">成功登录 <b>${s.successful_logins}</b></span>
+    ${syncedAt ? `<span class="stat">同步 <b>${escapeHtml(syncedAt)}</b></span>` : ""}`;
+}
+async function boot(){
+  document.getElementById("userList").innerHTML = '<div class="empty">正在同步数据库...</div>';
+  document.getElementById("content").innerHTML = '<div class="empty">正在加载完整数据...</div>';
+  const q = encodeURIComponent(document.getElementById("searchInput").value.trim());
+  const json = await api("/api/admin/bootstrap?q="+q);
+  users = json.users || [];
+  currentDetail = json.detail || null;
+  currentUser = currentDetail ? currentDetail.user : (users[0] || null);
+  currentProfileId = currentDetail ? Number(currentDetail.selected_profile_id || 0) : 0;
+  syncedAt = json.synced_at || "";
+  renderStats(json.stats);
+  renderUsers();
+  renderContent();
+}
+async function loadOverview(){
+  const json = await api("/api/admin/overview");
+  renderStats(json.stats);
+}
+function renderUsers(){
+  document.getElementById("userList").innerHTML = users.map(u => `
+    <button class="user ${currentUser&&currentUser.id===u.id?"active":""}" onclick="selectUser(${u.id})">
+      <div class="avatar">${escapeHtml((u.account||"?").slice(0,1).toUpperCase())}</div>
+      <div><strong>${escapeHtml(u.account)}</strong><span>点数 ${u.balance} · 聊天 ${u.message_count} · ${escapeHtml(u.last_login||"未登录")}</span></div>
+    </button>`).join("") || '<div class="empty">没有用户</div>';
+}
+async function loadUsers(){
+  const q = encodeURIComponent(document.getElementById("searchInput").value.trim());
+  const json = await api("/api/admin/users?q="+q);
+  users = json.users || [];
+  if(currentUser && !users.some(u=>u.id===currentUser.id)){
+    currentUser = null;
+    currentDetail = null;
+    currentProfileId = 0;
+  }
+  renderUsers();
+  renderContent();
+}
+async function selectUser(id){
+  currentUser = users.find(u=>u.id===id) || {id};
+  currentProfileId = 0;
+  renderUsers();
+  document.getElementById("content").innerHTML = '<div class="empty">正在同步该用户数据...</div>';
+  const json = await api("/api/admin/user/"+id);
+  currentDetail = json;
+  currentUser = json.user;
+  currentProfileId = Number(json.selected_profile_id || 0);
+  renderContent();
+}
+async function selectProfile(profileId){
+  if(!currentUser)return;
+  currentProfileId = Number(profileId || 0);
+  document.getElementById("content").innerHTML = '<div class="empty">正在同步该角色聊天...</div>';
+  const suffix = currentProfileId ? "?profile_id="+encodeURIComponent(currentProfileId) : "";
+  const json = await api("/api/admin/user/"+currentUser.id+suffix);
+  currentDetail = json;
+  currentUser = json.user;
+  currentProfileId = Number(json.selected_profile_id || 0);
+  renderContent();
+}
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll(".tab").forEach(btn=>btn.classList.toggle("active", btn.dataset.tab===tab));
+  renderContent();
+}
+function detailHead(){
+  if(!currentDetail)return "";
+  const u = currentDetail.user;
+  return `<div class="detail-head"><div><h2>${escapeHtml(u.account)}</h2><p>ID ${u.id} · 点数 ${u.balance} · 创建 ${escapeHtml(u.created_at)}</p></div></div>`;
+}
+function renderContent(){
+  const el = document.getElementById("content");
+  if(!currentDetail){el.innerHTML='<div class="empty">请选择左侧用户</div>';return}
+  if(currentTab==="messages")renderMessages(el);
+  if(currentTab==="wallet")renderTable(el, "点数流水", ["时间","类型","变动","余额","备注"], currentDetail.wallet_logs.map(r=>[r.created_at,r.log_type,r.change_points,r.balance_after,r.remark]));
+  if(currentTab==="login")renderTable(el, "登录记录", ["时间","成功","IP","信息","浏览器"], currentDetail.login_logs.map(r=>[r.created_at,r.success?"成功":"失败",r.ip,r.message,r.user_agent]));
+  if(currentTab==="novel")renderTable(el, "小说记录", ["时间","类型","标题","花费","内容"], currentDetail.generations.map(r=>[r.created_at,r.action,r.title,r.cost_points,r.content]));
+  if(currentTab==="orders")renderTable(el, "充值订单", ["时间","订单号","金额","点数","状态","支付时间"], currentDetail.orders.map(r=>[r.created_at,r.order_no,r.amount,r.points,r.status,r.paid_at]));
+}
+function renderMessages(el){
+  const rows = [...(currentDetail.messages||[])].reverse();
+  const profiles = currentDetail.profiles || [];
+  const profileOptions = profiles.map(p=>`<option value="${p.id}"${currentProfileId===Number(p.id)?" selected":""}>${escapeHtml(p.character_name || "未命名角色")} · ${escapeHtml(p.relationship || "关系未填")} · ${p.message_count || 0}条</option>`).join("");
+  const profileSelect = `<div class="message-tools"><label for="profileSelect">查看角色</label><select id="profileSelect" onchange="selectProfile(this.value)"><option value="0"${currentProfileId===0?" selected":""}>全部角色（最近300条）</option>${profileOptions}</select></div>`;
+  el.innerHTML = detailHead()+profileSelect+`<div class="messages-wrap"><div class="messages">${rows.map(m=>{
+    const isUser = m.role === "user";
+    const name = isUser ? currentDetail.user.account : (m.character_name || "AI");
+    const media = m.media && m.media.url ? `<div class="meta">图片：${escapeHtml(m.media.url)}</div>` : "";
+    return `<div class="msg ${isUser?"user":""}"><div class="avatar">${escapeHtml((name||"?").slice(0,1).toUpperCase())}</div><div><div class="meta">${escapeHtml(name)} · ${escapeHtml(m.created_at)}</div><div class="bubble">${escapeHtml(m.content||"")}${media}</div></div></div>`
+  }).join("") || '<div class="empty">没有聊天记录</div>'}</div></div>`;
+}
+function renderTable(el, title, heads, rows){
+  el.innerHTML = detailHead()+`<div class="table-wrap"><table class="table"><thead><tr>${heads.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(v=>`<td><div class="clip">${escapeHtml(v)}</div></td>`).join("")}</tr>`).join("") || `<tr><td colspan="${heads.length}">暂无数据</td></tr>`}</tbody></table></div>`;
+}
+async function downloadExcel(){
+  const res = await fetch(API_BASE+"/api/admin/export.xlsx",{headers:{Authorization:"Bearer "+adminToken}});
+  if(!res.ok){alert("导出失败");return}
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "lingmo-admin.xlsx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+if(adminToken){showApp();boot().catch(()=>showLogin())}else{showLogin()}
+</script>
+</body>
+</html>

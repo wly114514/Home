@@ -1,0 +1,14 @@
+{
+  "name": "mihoyo-ai-companion",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Node.js 服务：角色聊天、小说、生图及原 SQLite 数据兼容",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "start": "node backend-node/server.mjs",
+    "test": "node --test backend-node/test/*.test.mjs",
+    "check": "node --check backend-node/server.mjs && node --check backend-node/app.mjs && node --check backend-node/ai-client.mjs && node --check backend-node/images.mjs && node --check backend-node/auth.mjs"
+  },
+  "dependencies": { "bcryptjs": "3.0.3", "sharp": "0.35.5" }
+}

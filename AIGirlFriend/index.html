@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>灵墨 心语 | 你的二次元陪伴时光</title>
+  
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <link rel="stylesheet" href="assets/anime-theme.css" />
+</head>
+<body class="home-page">
+  <div class="page">
+  <header><div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></span><div><div class="brand-name">灵墨 心语</div><div class="brand-caption">A LITTLE WORLD FOR US</div></div></div><nav class="home-nav" aria-label="网站导航"><a href="#characters">遇见她</a><a href="novel.html">故事工坊</a><a href="#support">支持我们</a></nav><div class="user-bar"><span class="pill" id="userInfo">未登录</span><button class="btn" id="loginBtn" onclick="openAuth()">登录 / 注册</button><button class="btn secondary" id="logoutBtn" style="display:none" onclick="logout()">退出</button></div></header>
+
+  <main>
+<section class="hero"><div class="hero-copy"><div class="eyebrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 6.2L21 12l-6.2 2.8L12 21l-2.8-6.2L3 12l6.2-2.8Z"/></svg> 每一份心事，都值得被温柔回应</div><h1>在这里，<br>遇见<span>只属于你的她</span></h1><p class="lead">把今天的小事，讲给喜欢的人听<br>与熟悉的二次元角色相遇，让陪伴成为日常，<br>一起写下属于你们的故事</p><div class="hero-buttons"><button class="btn" onclick="goChat()">开启心动对话 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button><a class="soft-link" href="#characters">先认识她们 ↓</a></div><div class="hero-note"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg> 专属角色陪伴</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1"/><path d="m3 16 5-5 4 4 4-6 5 8"/></svg> 定格心动瞬间</span><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg> 保存每次对话</span></div></div>
+<div class="hero-art" aria-label="流萤角色展示"><div class="art-orbit"></div><div class="art-frame"><img src="assets/firefly-avatar.png" alt="星光下的流萤" fetchpriority="high"/><div class="art-label"><small>YOUR EVERYDAY COMPANION</small><strong>流萤 / Firefly</strong></div></div><span class="art-spark" aria-hidden="true">✧</span><div class="art-mini">✦ 一点星光，一份陪伴</div><div class="floating-note">如果可以，我想和你一起，<br>看看这个世界更多的风景</div></div></section>
+<section class="characters" id="characters"><div class="section-head"><div><h2>故事，从相遇开始</h2><p>选择一个熟悉的名字，开启新的陪伴时光</p></div><small>MEET YOUR COMPANION / 01</small></div><div class="character-cards">
+<button class="character-card" onclick="goChat('firefly')"><img src="assets/firefly-avatar.png" alt="流萤" loading="lazy"/><span class="card-copy"><small>STARLIGHT &amp; WARMTH</small><h3>流萤</h3><p>温柔的坚定，藏在每一句问候里<br>陪你聊聊日常，也陪你奔赴远方</p><span class="card-bottom"><span>温柔 / 真诚 / 星光</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></span></span></button>
+<button class="character-card" onclick="goChat('xiadie')"><img src="assets/xiadie-avatar.png" alt="遐蝶" loading="lazy"/><span class="card-copy"><small>BUTTERFLIES &amp; DREAMS</small><h3>遐蝶</h3><p>让思绪落在蝴蝶的翅膀上<br>在静谧的梦境里，听见你的心声</p><span class="card-bottom"><span>优雅 / 神秘 / 梦境</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></span></span></button></div></section>
+<section class="home-secondary"><article class="entry" onclick="goNovel()" role="button" tabindex="0" onkeydown="cardKey(event, goNovel)"><span class="entry-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m13 6 5 5"/></svg></span><div><h3>故事工坊</h3><p>从一个灵感开始，写下你的轻小说与冒险</p></div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></article><article class="entry" onclick="goChat()" role="button" tabindex="0" onkeydown="cardKey(event, goChat)"><span class="entry-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 6.2L21 12l-6.2 2.8L12 21l-2.8-6.2L3 12l6.2-2.8Z"/></svg></span><div><h3>创造你的专属角色</h3><p>设定名字与性格，遇见想象中的那个她</p></div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></article></section>
+<section class="account-strip" aria-label="我的账号"><div class="status-card"><span>当前身份</span><strong id="accountStatus">访客</strong></div><div class="status-card"><span>心动额度</span><strong id="balance">0 点</strong></div><div class="status-card"><span>下一段故事</span><strong id="accountHint">登录后开启陪伴时光</strong></div></section>
+<section class="support" id="support" aria-label="支持项目"><div class="support-panel"><div><h2>陪伴，也需要一点小小的支持</h2><p>你的支持将用于维护网站与服务器，<br>让这片小小的心动世界，继续亮着灯</p></div><div class="qr-list"><div class="qr-card"><img src="assets/payment-placeholder.svg" alt="请配置自己的微信支持方式" loading="lazy"/><strong>微信支持</strong></div><div class="qr-card"><img src="assets/payment-placeholder.svg" alt="请配置自己的支付宝支持方式" loading="lazy"/><strong>支付宝支持</strong></div></div></div></section>
+</main>
+
+  <footer>
+    <span>© 2026 灵墨 AI</span>
+    <span>站点备案信息请由部署者填写</span>
+  </footer>
+</div>
+
+<div class="modal" id="authModal">
+  <div class="auth-box">
+    <div class="modal-head">
+      <h3>用户登录 / 注册</h3>
+      <button class="close" onclick="closeAuth()">×</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="loginTab" onclick="switchAuth('login')">登录</button>
+      <button class="tab" id="registerTab" onclick="switchAuth('register')">注册</button>
+    </div>
+    <div id="loginForm">
+      <div class="form-item"><label for="loginAccount">手机号 / 用户名</label><input id="loginAccount" placeholder="请输入账号" /></div>
+      <div class="form-item"><label for="loginPassword">密码</label><input id="loginPassword" type="password" placeholder="请输入密码" /></div>
+      <div class="turnstile-wrap" id="loginTurnstileWrap">
+        <div id="loginTurnstileWidget"></div>
+      </div>
+      <div class="form-item captcha-fallback hidden" id="loginCaptchaFallback">
+        <label for="loginCaptcha">图片验证码</label>
+        <div class="captcha-row">
+          <input id="loginCaptcha" placeholder="输入图片字符" autocomplete="off" />
+          <img id="loginCaptchaImage" alt="图片验证码" />
+          <button class="btn secondary captcha-refresh" type="button" onclick="loadLoginCaptcha(true)" title="刷新验证码">↻</button>
+        </div>
+      </div>
+      <div class="notice" id="loginVerificationNotice" role="status" aria-live="polite"></div>
+      <button class="btn main-btn" onclick="loginTurnstile()">登录</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="form-item"><label for="regAccount">手机号 / 用户名</label><input id="regAccount" placeholder="请输入账号" /></div>
+      <div class="form-item"><label for="regPassword">密码</label><input id="regPassword" type="password" placeholder="至少 6 位" /></div>
+      <div class="turnstile-wrap" id="turnstileWrap">
+        <div id="turnstileWidget"></div>
+      </div>
+      <div class="form-item captcha-fallback" id="captchaFallback">
+        <label for="regCaptcha">图片人机验证</label>
+        <div class="captcha-row">
+          <input id="regCaptcha" placeholder="输入图片字符" autocomplete="off" />
+          <img id="captchaImage" alt="图片验证码" />
+          <button class="btn secondary captcha-refresh" type="button" onclick="loadCaptcha()" title="刷新验证码">↻</button>
+        </div>
+      </div>
+      <div class="form-item">
+        <label for="regCode">验证码</label>
+        <div class="row">
+          <input id="regCode" placeholder="输入验证码" />
+          <button class="btn secondary" onclick="sendCodeTurnstile()">发送验证码</button>
+        </div>
+      </div>
+      <button class="btn main-btn" onclick="registerTurnstile()">注册</button>
+      <div class="notice" id="codeNotice">发送验证码前，请先输入图片验证码</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:8000" : window.location.origin;
+let authMode = "login";
+let registerCaptchaToken = "";
+let turnstileEnabled = false;
+let turnstileSiteKey = "";
+let turnstileWidgetId = null;
+let turnstileToken = "";
+let loginTurnstileWidgetId = null;
+let loginTurnstileToken = "";
+let loginCaptchaToken = "";
+let turnstileFallback = false;
+let turnstileWaitStarted = 0;
+let loginTurnstileWaitStarted = 0;
+const TURNSTILE_LOAD_TIMEOUT_MS = 12000;
+
+function token(){return localStorage.getItem("token") || ""}
+function authHeaders(){return {"Content-Type":"application/json","Authorization":"Bearer "+token()}}
+function openAuth(){document.getElementById("authModal").style.display="flex"; if(authMode==="register") loadCaptcha(); else loadLoginTurnstile()}
+function closeAuth(){document.getElementById("authModal").style.display="none"}
+function switchAuth(mode){
+  authMode=mode;
+  document.getElementById("loginTab").classList.toggle("active",mode==="login");
+  document.getElementById("registerTab").classList.toggle("active",mode==="register");
+  document.getElementById("loginForm").style.display=mode==="login"?"block":"none";
+  document.getElementById("registerForm").style.display=mode==="register"?"block":"none";
+  if(mode==="register") loadCaptcha(); else loadLoginTurnstile();
+}
+function goNovel(){location.href="novel.html"}
+function goChat(preset){if(preset)localStorage.setItem("preferredCompanionPreset",preset);location.href="companion-chat.html"}
+function cardKey(event, handler){
+  if(event.key === "Enter" || event.key === " "){
+    event.preventDefault();
+    handler();
+  }
+}
+
+async function loadTurnstileConfig(){
+  if(turnstileSiteKey || turnstileEnabled)return;
+  try{
+    const res=await fetch(API_BASE+"/api/auth/turnstile-config");
+    const json=await res.json();
+    turnstileEnabled=!!(json.success&&json.enabled&&json.site_key);
+    turnstileSiteKey=json.site_key||"";
+    document.getElementById("turnstileWrap").style.display=turnstileEnabled?"block":"none";
+    document.getElementById("loginTurnstileWrap").style.display=turnstileEnabled?"block":"none";
+    document.getElementById("captchaFallback").classList.toggle("hidden",turnstileEnabled);
+    document.getElementById("loginCaptchaFallback").classList.toggle("hidden",turnstileEnabled);
+  }catch(e){
+    turnstileEnabled=false;
+  }
+}
+function useCaptchaFallback(){
+  turnstileFallback=true;
+  turnstileEnabled=false;
+  turnstileToken="";
+  loginTurnstileToken="";
+  document.getElementById("turnstileWrap").style.display="none";
+  document.getElementById("loginTurnstileWrap").style.display="none";
+  document.getElementById("captchaFallback").classList.remove("hidden");
+  document.getElementById("loginCaptchaFallback").classList.remove("hidden");
+  loadCaptcha(true);
+  loadLoginCaptcha(true);
+}
+function renderTurnstile(){
+  if(!turnstileEnabled||!turnstileSiteKey)return;
+  if(!turnstileWaitStarted)turnstileWaitStarted=Date.now();
+  if(!window.turnstile){
+    const delayed=Date.now()-turnstileWaitStarted>TURNSTILE_LOAD_TIMEOUT_MS;
+    document.getElementById("codeNotice").innerText=delayed?"Cloudflare 安全验证加载较慢，仍在尝试连接。如持续无法加载，请刷新页面后重试。":"正在加载 Cloudflare 安全验证…";
+    setTimeout(renderTurnstile,delayed?1000:250);
+    return;
+  }
+  turnstileWaitStarted=0;
+  document.getElementById("codeNotice").innerText="请先完成 Cloudflare 安全验证，再发送验证码";
+  if(turnstileWidgetId!==null){
+    window.turnstile.reset(turnstileWidgetId);
+    turnstileToken="";
+    return;
+  }
+  turnstileWidgetId=window.turnstile.render("#turnstileWidget",{
+    sitekey:turnstileSiteKey,
+    theme:"light",
+    callback:token=>{turnstileToken=token;registerCaptchaToken=token;document.getElementById("codeNotice").innerText="真人验证已完成，可以发送验证码"},
+    "expired-callback":()=>{turnstileToken="";document.getElementById("codeNotice").innerText="真人验证已过期，请重新验证"},
+    "error-callback":()=>{turnstileToken="";document.getElementById("codeNotice").innerText="真人验证加载失败，请刷新后重试"}
+  });
+}
+function resetTurnstile(){
+  turnstileToken="";
+  if(window.turnstile&&turnstileWidgetId!==null)window.turnstile.reset(turnstileWidgetId);
+}
+async function loadLoginTurnstile(){
+  await loadTurnstileConfig();
+  if(turnstileEnabled)renderLoginTurnstile();
+  else{document.getElementById("loginVerificationNotice").innerText="请填写图片验证码后登录。";await loadLoginCaptcha()}
+}
+function renderLoginTurnstile(){
+  if(!turnstileEnabled||!turnstileSiteKey)return;
+  if(!loginTurnstileWaitStarted)loginTurnstileWaitStarted=Date.now();
+  if(!window.turnstile){
+    const delayed=Date.now()-loginTurnstileWaitStarted>TURNSTILE_LOAD_TIMEOUT_MS;
+    document.getElementById("loginVerificationNotice").innerText=delayed?"Cloudflare 安全验证加载较慢，仍在尝试连接。如持续无法加载，请刷新页面后重试。":"正在加载 Cloudflare 安全验证…";
+    setTimeout(renderLoginTurnstile,delayed?1000:250);
+    return;
+  }
+  loginTurnstileWaitStarted=0;
+  document.getElementById("loginVerificationNotice").innerText="请完成 Cloudflare 安全验证后登录";
+  if(loginTurnstileWidgetId!==null){
+    window.turnstile.reset(loginTurnstileWidgetId);
+    loginTurnstileToken="";
+    return;
+  }
+  loginTurnstileWidgetId=window.turnstile.render("#loginTurnstileWidget",{
+    sitekey:turnstileSiteKey,
+    theme:"light",
+    callback:token=>{loginTurnstileToken=token;document.getElementById("loginVerificationNotice").innerText="安全验证已完成，可以登录";},
+    "expired-callback":()=>{loginTurnstileToken="";document.getElementById("loginVerificationNotice").innerText="安全验证已过期，请重新完成验证";},
+    "error-callback":()=>{loginTurnstileToken="";document.getElementById("loginVerificationNotice").innerText="Cloudflare 安全验证加载失败，请刷新页面后重试。";}
+  });
+}
+function resetLoginTurnstile(){
+  loginTurnstileToken="";
+  if(window.turnstile&&loginTurnstileWidgetId!==null)window.turnstile.reset(loginTurnstileWidgetId);
+}
+
+async function loadCaptcha(force=false){
+  try{
+    await loadTurnstileConfig();
+    if(turnstileEnabled&&!force){
+      renderTurnstile();
+      document.getElementById("codeNotice").innerText="请先完成 Cloudflare 真人验证，再发送验证码。";
+      return;
+    }
+    const res=await fetch(API_BASE+"/api/auth/captcha");
+    const json=await res.json();
+    if(json.success){
+      registerCaptchaToken=json.token;
+      document.getElementById("captchaImage").src=json.image;
+      document.getElementById("regCaptcha").value="";
+      document.getElementById("codeNotice").innerText="发送验证码前，请先输入图片验证码";
+    }
+  }catch(e){
+    document.getElementById("codeNotice").innerText="图片验证码加载失败，请确认后端服务已启动。";
+  }
+}
+async function loadLoginCaptcha(force=false){
+  try{
+    await loadTurnstileConfig();
+    if(turnstileEnabled&&!force)return;
+    const res=await fetch(API_BASE+"/api/auth/captcha");
+    const json=await res.json();
+    if(json.success){
+      loginCaptchaToken=json.token;
+      document.getElementById("loginCaptchaImage").src=json.image;
+      document.getElementById("loginCaptcha").value="";
+    }
+  }catch(e){}
+}
+async function sendCode(){
+  const account=document.getElementById("regAccount").value.trim();
+  const captcha_code=document.getElementById("regCaptcha").value.trim();
+  if(!account){alert("请先输入账号/手机号");return}
+  if(!captcha_code){alert("请先输入图片验证码");return}
+  try{
+    const res=await fetch(API_BASE+"/api/auth/send-code",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account,captcha_token:registerCaptchaToken,captcha_code})});
+    const json=await res.json();
+    if(json.success){
+      document.getElementById("codeNotice").innerText="开发验证码："+json.dev_code+"，5 分钟内有效。";
+    }else{
+      alert(json.message||"发送失败");
+      await loadCaptcha();
+    }
+  }catch(e){
+    alert("验证码发送失败，请确认后端服务已启动。");
+  }
+}
+async function register(){
+  const account=document.getElementById("regAccount").value.trim();
+  const password=document.getElementById("regPassword").value;
+  const code=document.getElementById("regCode").value.trim();
+  try{
+    const res=await fetch(API_BASE+"/api/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account,password,code,captcha_token:registerCaptchaToken})});
+    const json=await res.json();
+    if(json.success){
+      alert("注册成功，请登录");
+      switchAuth("login");
+      document.getElementById("loginAccount").value=account;
+    }else{
+      alert(json.message||"注册失败");
+    }
+  }catch(e){
+    alert("注册失败，请确认后端服务已启动。");
+  }
+}
+async function sendCodeTurnstile(){
+  const account=document.getElementById("regAccount").value.trim();
+  const captcha_code=document.getElementById("regCaptcha").value.trim();
+  if(!account){alert("请先输入账号/手机号");return}
+  if(turnstileEnabled&&!turnstileToken){alert("请先完成 Cloudflare 真人验证");return}
+  if((!turnstileEnabled||turnstileFallback)&&!captcha_code){alert("请先输入图片验证码");return}
+  try{
+    const res=await fetch(API_BASE+"/api/auth/send-code",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account,captcha_token:registerCaptchaToken,captcha_code,turnstile_token:turnstileToken})});
+    const json=await res.json();
+    if(json.success){
+      document.getElementById("codeNotice").innerText="开发验证码："+json.dev_code+"，5 分钟内有效。";
+    }else{
+      alert(json.message||"发送失败");
+      if(turnstileEnabled)resetTurnstile();else await loadCaptcha(true);
+    }
+  }catch(e){
+    alert("验证码发送失败，请确认后端服务已启动。");
+  }
+}
+async function registerTurnstile(){
+  const account=document.getElementById("regAccount").value.trim();
+  const password=document.getElementById("regPassword").value;
+  const code=document.getElementById("regCode").value.trim();
+  try{
+    const res=await fetch(API_BASE+"/api/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account,password,code,captcha_token:registerCaptchaToken,turnstile_token:registerCaptchaToken})});
+    const json=await res.json();
+    if(json.success){
+      alert("注册成功，请登录");
+      switchAuth("login");
+      document.getElementById("loginAccount").value=account;
+      resetTurnstile();
+    }else{
+      alert(json.message||"注册失败");
+    }
+  }catch(e){
+    alert("注册失败，请确认后端服务已启动。");
+  }
+}
+async function loginTurnstile(){
+  const account=document.getElementById("loginAccount").value.trim();
+  const password=document.getElementById("loginPassword").value;
+  await loadTurnstileConfig();
+  const captcha_code=document.getElementById("loginCaptcha").value.trim();
+  if(turnstileEnabled&&!loginTurnstileToken){alert("请先完成 Cloudflare 真人验证");return}
+  if((!turnstileEnabled||turnstileFallback)&&!captcha_code){alert("请先输入图片验证码");return}
+  try{
+    const res=await fetch(API_BASE+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account,password,turnstile_token:loginTurnstileToken,captcha_token:loginCaptchaToken,captcha_code})});
+    const json=await res.json();
+    if(json.success){
+      localStorage.setItem("token",json.token);
+      closeAuth();
+      resetLoginTurnstile();
+      await loadMe();
+    }else{
+      alert(json.message||"登录失败");
+      resetLoginTurnstile();
+      if(!turnstileEnabled||turnstileFallback)await loadLoginCaptcha(true);
+    }
+  }catch(e){
+    alert("登录失败，请确认后端服务已启动。");
+  }
+}
+async function login(){
+  const account=document.getElementById("loginAccount").value.trim();
+  const password=document.getElementById("loginPassword").value;
+  try{
+    const res=await fetch(API_BASE+"/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({account,password})});
+    const json=await res.json();
+    if(json.success){
+      localStorage.setItem("token",json.token);
+      closeAuth();
+      await loadMe();
+    }else{
+      alert(json.message||"登录失败");
+    }
+  }catch(e){
+    alert("登录失败，请确认后端服务已启动。");
+  }
+}
+function logout(){
+  localStorage.removeItem("token");
+  document.getElementById("userInfo").innerText="未登录";
+  document.getElementById("accountStatus").innerText="访客";
+  document.getElementById("balance").innerText="0 点";
+  document.getElementById("accountHint").innerText="登录后可使用全部功能";
+  document.getElementById("loginBtn").style.display="inline-flex";
+  document.getElementById("logoutBtn").style.display="none";
+}
+async function loadMe(){
+  if(!token()){logout();return}
+  try{
+    const res=await fetch(API_BASE+"/api/me",{headers:authHeaders()});
+    const json=await res.json();
+    if(json.success){
+      document.getElementById("userInfo").innerText=json.user.account;
+      document.getElementById("accountStatus").innerText="已登录";
+      document.getElementById("balance").innerText=json.user.balance+" 点";
+      document.getElementById("accountHint").innerText="可进入全部服务";
+      document.getElementById("loginBtn").style.display="none";
+      document.getElementById("logoutBtn").style.display="inline-flex";
+    }else{
+      logout();
+    }
+  }catch(e){
+    document.getElementById("accountHint").innerText="后端未连接";
+  }
+}
+loadMe();
+</script>
+</body>
+</html>

@@ -4,6 +4,13 @@
 !.env.example
 *.env
 .source.env
+.vision.env
+.private/
+uploads/
+attachments/
+*key*.txt
+*密钥*.txt
+图片识别.txt
 companion_voice_catalog.json
 *.pem
 *.key

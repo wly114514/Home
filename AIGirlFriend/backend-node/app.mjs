@@ -12,6 +12,8 @@ import { createCatalog, catalogMetadata, effectiveProfile, personalPreference } 
 import { xlsx } from "./xlsx.mjs";
 import { createVoiceService, TTS_ENV_KEYS, DEFAULT_TTS_ENV_FILE } from "./cosyvoice.mjs";
 import { buildCompanionMessages } from "./dialogue-prompt.mjs";
+import { createAttachmentStore, normalizeImage, MAX_UPLOAD_BYTES, MAX_IMAGES_PER_MESSAGE } from "./attachments.mjs";
+import { createVisionClient } from "./vision.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export function loadEnv(file) {
@@ -37,7 +39,9 @@ export async function createApplication(options = {}) {
   const root = resolve(options.root || ROOT);
   // Only read the explicitly authorised TTS settings; unrelated pet application secrets stay separate.
   const sourceTts = loadEnv(options.ttsEnvFile || process.env.COSYVOICE_ENV_FILE || DEFAULT_TTS_ENV_FILE);
-  const env = { ...Object.fromEntries(TTS_ENV_KEYS.filter(key => Object.hasOwn(sourceTts, key)).map(key => [key, sourceTts[key]])), ...loadEnv(resolve(root, ".env")), ...process.env, ...options.env };
+  const visionKeys = ["DASHSCOPE_VISION_API_KEY", "AI_VISION_BASE_URL", "AI_VISION_MODEL", "AI_VISION_TIMEOUT_MS", "COMPANION_ATTACHMENTS_DIR"];
+  const sourceVision = loadEnv(options.visionEnvFile || process.env.VISION_ENV_FILE || resolve(root, ".vision.env"));
+  const env = { ...Object.fromEntries(TTS_ENV_KEYS.filter(key => Object.hasOwn(sourceTts, key)).map(key => [key, sourceTts[key]])), ...Object.fromEntries(visionKeys.filter(key => Object.hasOwn(sourceVision, key)).map(key => [key, sourceVision[key]])), ...loadEnv(resolve(root, ".env")), ...process.env, ...options.env };
   const localDev = truthy(env.LOCAL_DEV);
   const jwtSecret = env.JWT_SECRET || "change-this-secret", adminPassword = env.ADMIN_PASSWORD || "admin123456", paySecret = env.PAY_CALLBACK_SECRET || "dev-pay-secret";
   validateProductionConfig(env);
@@ -57,6 +61,9 @@ export async function createApplication(options = {}) {
     CREATE TABLE IF NOT EXISTS companion_image_tasks (task_id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, profile_id INTEGER NOT NULL, assistant_message_id INTEGER NOT NULL, status TEXT NOT NULL, stage TEXT NOT NULL, message TEXT, progress INTEGER NOT NULL DEFAULT 0, api_started INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, started_ms INTEGER NOT NULL, reply_json TEXT NOT NULL, options_json TEXT NOT NULL, error TEXT);
     CREATE TABLE IF NOT EXISTS companion_credit_holds (hold_id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, points INTEGER NOT NULL, expires_ms INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS companion_audio_generations (assistant_message_id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, profile_id INTEGER NOT NULL, status TEXT NOT NULL, filename TEXT, model TEXT, duration_seconds REAL, sha256 TEXT, charged_points INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS companion_attachments (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, profile_id INTEGER NOT NULL, mime_type TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, size INTEGER NOT NULL, sha256 TEXT NOT NULL, thumbnail_sha256 TEXT NOT NULL, message_id INTEGER, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS companion_vision_observations (user_message_id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, profile_id INTEGER NOT NULL, summary TEXT NOT NULL, model TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS idx_companion_attachments_owner ON companion_attachments(user_id,profile_id,message_id);
     CREATE INDEX IF NOT EXISTS idx_companion_credit_holds_user ON companion_credit_holds(user_id, expires_ms);
     CREATE INDEX IF NOT EXISTS idx_companion_messages_user_profile_id ON companion_messages(user_id, profile_id, id);
     CREATE INDEX IF NOT EXISTS idx_generation_records_user_id_id ON generation_records(user_id, id DESC);
@@ -144,6 +151,8 @@ export async function createApplication(options = {}) {
   const logAI = (uid, action, cost, success, prompt, error = null) => db.prepare("INSERT INTO ai_logs(user_id,action,cost_points,success,prompt,error,created_at) VALUES(?,?,?,?,?,?,?)").run(uid, action, cost, success ? 1 : 0, prompt, error, now());
   const logLogin = (request, account, uid, success, message) => db.prepare("INSERT INTO login_logs(user_id,account,success,ip,user_agent,message,created_at) VALUES(?,?,?,?,?,?,?)").run(uid || null, account, success ? 1 : 0, request.socket.remoteAddress || "", String(request.headers["user-agent"] || "").slice(0, 500), message, now());
   const textAI = createTextClient({ key: env.AI_API_KEY, baseUrl: env.AI_BASE_URL, mode: env.AI_TEXT_API_MODE, endpoint: env.AI_TEXT_ENDPOINT, timeoutMs: Number(env.AI_TEXT_TIMEOUT_MS || env.AI_TIMEOUT_MS) || 180000, tokenField: env.AI_TEXT_TOKEN_FIELD || "max_tokens", temperature: env.AI_TEXT_TEMPERATURE !== "off" });
+  const vision = createVisionClient(env), attachments = createAttachmentStore({ root, directory: env.COMPANION_ATTACHMENTS_DIR });
+  const claimedAttachments = new Map(), uploadControllers = new Map(), activeUploads = new Set();
   const imageService = createImageService({ env, root }), imageControllers = new Map(), imageQueue = [], chatControllers = new Map(), activeChats = new Set(); let closing = false;
 
   async function createProfile(uid, data) {
@@ -213,8 +222,76 @@ export async function createApplication(options = {}) {
     }
     return send(res, 200, bytes, headers);
   }
+  const attachmentMetadata = row => ({ id: row.id, url: `/api/companion/attachments/${row.id}`, thumbnail_url: `/api/companion/attachments/${row.id}?variant=thumbnail`, mime_type: row.mime_type, width: row.width, height: row.height, size: row.size });
+  const attachmentOwner = (id, uid) => db.prepare("SELECT a.* FROM companion_attachments a JOIN companion_profiles p ON p.id=a.profile_id AND p.user_id=a.user_id WHERE a.id=? AND a.user_id=?").get(id, uid);
+  const attachmentLimits = uid => {
+    const owned = db.prepare("SELECT COALESCE(SUM(size+102400),0) bytes,SUM(CASE WHEN message_id IS NULL THEN 1 ELSE 0 END) pending FROM companion_attachments WHERE user_id=?").get(uid);
+    const total = db.prepare("SELECT COALESCE(SUM(size+102400),0) bytes FROM companion_attachments").get().bytes;
+    return { owned, total };
+  };
+  function checkAttachmentQuota(uid, size = 0) {
+    const { owned, total } = attachmentLimits(uid);
+    if (owned.pending >= 12) throw Object.assign(new Error("待发送图片较多，请先发送或移除部分图片"), { status: 429 });
+    if (owned.bytes + size + 102400 > 100 * 1024 * 1024 || total + size + 102400 > 512 * 1024 * 1024) throw Object.assign(new Error("图片存储空间不足，请稍后再试"), { status: 413 });
+  }
+  async function uploadAttachment(request, res, account, url) {
+    if (!account) return fail(res, "请先登录", 401);
+    const profile = getProfile(account.id, url.searchParams.get("profile_id"));
+    if (!profile) return fail(res, "角色不存在或不属于当前账号", 404);
+    if (!vision.configured) return fail(res, "图片识别暂未配置，请稍后再试", 503);
+    if (Number(request.headers["content-length"]) > MAX_UPLOAD_BYTES) return fail(res, "图片不能超过 8MB", 413);
+    if (uploadControllers.size >= 4) return fail(res, "正在处理其他图片，请稍后重试", 429);
+    const controller = new AbortController(), aborted = () => controller.abort();
+    uploadControllers.set(controller, { uid: account.id, pid: profile.id }); request.once("aborted", aborted);
+    const closed = () => { if (!res.writableEnded) controller.abort(); }; res.once("close", closed);
+    let saved;
+    try {
+      for (const old of db.prepare("SELECT id FROM companion_attachments WHERE user_id=? AND message_id IS NULL AND created_at<? LIMIT 50").all(account.id, now(-86400000))) {
+        if (claimedAttachments.has(old.id)) continue;
+        await attachments.remove(old.id); db.prepare("DELETE FROM companion_attachments WHERE id=? AND message_id IS NULL").run(old.id);
+      }
+      checkAttachmentQuota(account.id);
+      const normalized = await normalizeImage(request, { contentType: request.headers["content-type"], signal: controller.signal });
+      controller.signal.throwIfAborted();
+      saved = await attachments.save(normalized, { signal: controller.signal });
+      controller.signal.throwIfAborted();
+      const row = transaction(() => {
+        if (!getProfile(account.id, profile.id)) throw new Error("角色已切换或移除，请重新上传");
+        checkAttachmentQuota(account.id, saved.size);
+        db.prepare("INSERT INTO companion_attachments(id,user_id,profile_id,mime_type,width,height,size,sha256,thumbnail_sha256,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)").run(saved.attachment_id, account.id, profile.id, saved.mime_type, saved.width, saved.height, saved.size, saved.sha256, saved.thumbnail_sha256, now());
+        return attachmentOwner(saved.attachment_id, account.id);
+      });
+      return ok(res, { success: true, attachment: attachmentMetadata(row) });
+    } catch (error) {
+      if (saved) await attachments.remove(saved.attachment_id).catch(() => {});
+      if (controller.signal.aborted) return fail(res, "图片上传已取消", 499);
+      throw error;
+    } finally { uploadControllers.delete(controller); request.off("aborted", aborted); res.off("close", closed); }
+  }
+  function trackedUpload(...args) { const pending = uploadAttachment(...args); activeUploads.add(pending); pending.finally(() => activeUploads.delete(pending)).catch(() => {}); return pending; }
+  async function attachmentFile(request, res, account, url, id) {
+    if (!account) return fail(res, "Not Found", 404);
+    const row = attachmentOwner(id, account.id);
+    if (!row || (!row.message_id && row.created_at < now(-86400000))) return fail(res, "Not Found", 404);
+    if (request.method === "DELETE") {
+      if (row.message_id || claimedAttachments.has(id)) return fail(res, "图片已发送或正在处理，不能从草稿中移除", 409);
+      await attachments.remove(id); db.prepare("DELETE FROM companion_attachments WHERE id=? AND user_id=? AND message_id IS NULL").run(id, account.id);
+      return ok(res, { success: true });
+    }
+    const variant = url.searchParams.get("variant") || "image";
+    if (!["image", "thumbnail"].includes(variant)) return fail(res, "图片类型无效", 400);
+    const file = await attachments.read(id, { variant });
+    if (file.sha256 !== (variant === "thumbnail" ? row.thumbnail_sha256 : row.sha256)) return fail(res, "图片校验失败，请重新上传", 422);
+    const headers = { "Content-Type": file.mime_type, "Cache-Control": "private, no-store", "Content-Security-Policy": "default-src 'none'; sandbox", "Content-Disposition": "inline" };
+    return send(res, 200, file.bytes, headers);
+  }
   function historyMedia(raw, light, uid, messageId) {
-    const media = audioMedia(safe(raw), uid, messageId); if (!light || !media || !Array.isArray(media.images)) return media;
+    const media = audioMedia(safe(raw), uid, messageId);
+    if (Array.isArray(media?.attachments)) {
+      const owned = new Map(db.prepare("SELECT * FROM companion_attachments WHERE user_id=? AND message_id=?").all(uid, messageId).map(row => [row.id, row]));
+      media.attachments = media.attachments.map(item => owned.get(item?.id)).filter(Boolean).map(attachmentMetadata);
+    }
+    if (!light || !media || !Array.isArray(media.images)) return media;
     for (const [index, item] of media.images.entries()) if (typeof item?.url === "string" && item.url.startsWith("data:image/")) {
       // Project a small, independently signed URL. Viewing history never resizes or rewrites legacy media.
       item.url = `/api/companion/history-image/${messageId}/${index}?signature=${historyImageSignature(uid, messageId, index)}`;
@@ -305,16 +382,23 @@ export async function createApplication(options = {}) {
     return [...images, ...audios];
   }
   async function chat(request, res, account, stream) {
-    if (!account) return fail(res, "请先登录"); const data = await readBody(request), message = String(data.message || "").trim();
+    if (!account) return fail(res, "请先登录"); const data = await readBody(request);
+    if (data.attachment_ids !== undefined && (!Array.isArray(data.attachment_ids) || data.attachment_ids.some(id => typeof id !== "string") || data.attachment_ids.length > MAX_IMAGES_PER_MESSAGE || new Set(data.attachment_ids).size !== data.attachment_ids.length)) return fail(res, "每条消息最多选择 3 张不同的图片", 400);
+    const attachmentIds = data.attachment_ids || [], message = String(data.message || "").trim() || (attachmentIds.length ? "看看我发来的图片吧" : "");
     if (!message) return fail(res, "请输入要说的话"); if (message.length > 12000) return fail(res, "消息过长，请限制在 12000 字以内");
     let profile = getProfile(account.id, data.profile_id);
     if (!profile) { if (data.profile_id) return fail(res, "角色不存在或不属于当前账号"); const result = await createProfile(account.id, data); profile = getProfile(account.id, result.profile_id); }
     profile = currentProfile(profile);
-    const types = [...new Set(["text", ...(Array.isArray(data.reply_types) ? data.reply_types : ["text"]).filter(x => allowedTypes(profile).includes(x))])], previous = db.prepare("SELECT id,role,content FROM companion_messages WHERE user_id=? AND profile_id=? ORDER BY id DESC LIMIT 12").all(account.id, profile.id).reverse();
+    const attached = attachmentIds.map(id => attachmentOwner(id, account.id));
+    if (attached.some(row => !row || row.profile_id !== profile.id)) return fail(res, "图片不存在或不属于当前角色，请重新上传", 404);
+    if (attached.some(row => row.message_id || claimedAttachments.has(row.id))) return fail(res, "图片已发送或正在处理，请重新选择图片", 409);
+    if (attached.some(row => row.created_at < now(-86400000))) return fail(res, "草稿图片已过期，请重新上传", 410);
+    if (attached.length && !vision.configured) return fail(res, "图片识别暂未配置，请稍后再试", 503);
+    const types = [...new Set(["text", ...(Array.isArray(data.reply_types) ? data.reply_types : ["text"]).filter(x => allowedTypes(profile).includes(x))])], previous = db.prepare("SELECT m.id,m.role,m.content,v.summary AS vision_summary FROM companion_messages m LEFT JOIN companion_vision_observations v ON v.user_message_id=m.id AND v.user_id=m.user_id AND v.profile_id=m.profile_id WHERE m.user_id=? AND m.profile_id=? ORDER BY m.id DESC LIMIT 12").all(account.id, profile.id).reverse();
     const wantsAudio = Array.isArray(data.reply_types) && data.reply_types.includes("audio"), voice = profileVoice(profile);
-    const messages = buildCompanionMessages({ profile, history: previous, message, replyTypes: types, mediaFacts: confirmedMediaFacts(account.id, profile.id, previous) });
     const reservation = reserveChat(account.id, wantsAudio && voice.voice_available);
-    let uid; try { uid = saveMessage(account.id, profile.id, "user", message); } catch (error) { db.prepare("DELETE FROM companion_credit_holds WHERE hold_id=?").run(reservation.holdId); throw error; }
+    for (const row of attached) claimedAttachments.set(row.id, reservation.holdId);
+    let uid; try { uid = saveMessage(account.id, profile.id, "user", message); } catch (error) { for (const row of attached) claimedAttachments.delete(row.id); db.prepare("DELETE FROM companion_credit_holds WHERE hold_id=?").run(reservation.holdId); throw error; }
     const controller = new AbortController(), closed = () => { if (!res.writableEnded) controller.abort(); }; res.on("close", closed);
     chatControllers.set(reservation.holdId, { controller, uid: account.id, pid: profile.id });
     let heartbeat, emitted = "";
@@ -324,6 +408,19 @@ export async function createApplication(options = {}) {
       heartbeat = setInterval(() => { if (!res.destroyed) res.write(": heartbeat\n\n"); }, Number(env.SSE_HEARTBEAT_MS) || 15000); heartbeat.unref();
     }
     try {
+      let observation = null;
+      if (attached.length) {
+        if (stream) event("media_status", { type: "vision", media_type: "vision", stage: "vision", message: "正在看你发来的图片" });
+        const images = await Promise.all(attached.map(async row => {
+          const file = await attachments.read(row.id, { variant: "image", signal: controller.signal });
+          if (file.sha256 !== row.sha256) throw new Error("图片校验失败，请重新上传");
+          return { bytes: file.bytes, mime_type: file.mime_type };
+        }));
+        observation = await vision.describe({ images, userText: message, signal: controller.signal });
+        controller.signal.throwIfAborted();
+        if (stream) event("media_status", { type: "vision", media_type: "vision", stage: "reply", message: "图片看好了，正在回复你" });
+      }
+      const messages = buildCompanionMessages({ profile, history: previous, message, replyTypes: types, mediaFacts: confirmedMediaFacts(account.id, profile.id, previous), visionSummary: observation?.summary });
       const raw = await textAI(messages, { model: env.AI_COMPANION_MODEL || env.AI_NOVEL_MODEL, maxTokens: 1800, stream, signal: controller.signal, onDelta: (_delta, full) => { if (!stream) return; const text = partialReplyText(full); if (text.startsWith(emitted) && text.length > emitted.length) { event("delta", { text: text.slice(emitted.length) }); emitted = text; } } });
       if (controller.signal.aborted) throw new Error("请求已取消"); const parsed = parseReply(raw);
       if (stream && parsed.text.startsWith(emitted) && parsed.text.length > emitted.length) event("delta", { text: parsed.text.slice(emitted.length) });
@@ -335,13 +432,19 @@ export async function createApplication(options = {}) {
       if (!stream && types.includes("image")) reply.media = await imageService.enrich(reply.media, data, undefined, controller.signal);
       if (controller.signal.aborted) throw new Error("请求已取消");
       const payload = wallet(account.id, 5, "AI_COMPANION_CHAT", `AI对象聊天：${profile.character_name}`, balance => {
+        const userMedia = attached.length ? { attachments: attached.map(attachmentMetadata) } : {};
+        for (const row of attached) if (db.prepare("UPDATE companion_attachments SET message_id=? WHERE id=? AND user_id=? AND profile_id=? AND message_id IS NULL").run(uid, row.id, account.id, profile.id).changes !== 1) throw new Error("图片已移除，请重新上传");
+        if (attached.length) {
+          if (!db.prepare("UPDATE companion_messages SET media_json=? WHERE id=? AND user_id=? AND profile_id=?").run(JSON.stringify(userMedia), uid, account.id, profile.id).changes) throw new Error("对话已清空，请重新发送");
+          db.prepare("INSERT INTO companion_vision_observations(user_message_id,user_id,profile_id,summary,model,created_at) VALUES(?,?,?,?,?,?)").run(uid, account.id, profile.id, observation.summary, observation.model, now());
+        }
         const aid = saveMessage(account.id, profile.id, "assistant", reply.text, reply.media); logAI(account.id, "companion_chat", 5, true, message);
         if (reservation.audio) {
           db.prepare("UPDATE companion_credit_holds SET points=5 WHERE hold_id=?").run(reservation.holdId);
           db.prepare("INSERT INTO companion_audio_generations(assistant_message_id,user_id,profile_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?)").run(aid, account.id, profile.id, "running", now(), now());
         } else db.prepare("DELETE FROM companion_credit_holds WHERE hold_id=?").run(reservation.holdId);
         if (taskId) db.prepare("INSERT INTO companion_image_tasks(task_id,user_id,profile_id,assistant_message_id,status,stage,message,progress,api_started,created_at,updated_at,started_ms,reply_json,options_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(taskId, account.id, profile.id, aid, "pending", "prepare", "准备图片任务", 0, 0, now(), now(), Date.now(), JSON.stringify(reply), JSON.stringify({ image_quality: data.image_quality, image_aspect_ratio: data.image_aspect_ratio, image_tone: data.image_tone }));
-        return { success: true, reply, profile_id: profile.id, user_message_id: uid, assistant_message_id: aid, cost: 5, cost_breakdown: { text: 5, audio: 0 }, balance, cloud_messages: [{ id: uid, role: "user", content: message, media: {}, created_at: now() }, { id: aid, role: "assistant", content: reply.text, media: reply.media, created_at: now() }] };
+        return { success: true, reply, profile_id: profile.id, user_message_id: uid, assistant_message_id: aid, cost: 5, cost_breakdown: { text: 5, audio: 0 }, balance, cloud_messages: [{ id: uid, role: "user", content: message, media: userMedia, created_at: now() }, { id: aid, role: "assistant", content: reply.text, media: reply.media, created_at: now() }] };
       }, reservation.holdId);
       if (taskId) { const task = db.prepare("SELECT * FROM companion_image_tasks WHERE task_id=?").get(taskId); if (stream) event("media_status", taskPayload(task)); setImmediate(() => queueImageTask(task)); }
       if (reservation.audio) {
@@ -377,7 +480,7 @@ export async function createApplication(options = {}) {
       payload.balance = db.prepare("SELECT balance FROM users WHERE id=?").get(account.id).balance;
       if (stream) { event("done", payload); res.end(); } else ok(res, payload);
     } catch (error) { if (!closing) logAI(account.id, "companion_chat", 0, false, message, error.message); if (stream) { event("error", { message: error.message }); res.end(); } else fail(res, error.message); }
-    finally { clearInterval(heartbeat); res.off("close", closed); db.prepare("DELETE FROM companion_credit_holds WHERE hold_id=?").run(reservation.holdId); chatControllers.delete(reservation.holdId); }
+    finally { clearInterval(heartbeat); res.off("close", closed); for (const row of attached) if (claimedAttachments.get(row.id) === reservation.holdId) claimedAttachments.delete(row.id); db.prepare("DELETE FROM companion_credit_holds WHERE hold_id=?").run(reservation.holdId); chatControllers.delete(reservation.holdId); }
   }
   function trackedChat(...args) { const pending = chat(...args); activeChats.add(pending); pending.finally(() => activeChats.delete(pending)).catch(() => {}); return pending; }
   async function generateNovel(request, res, account, kind) {
@@ -423,7 +526,7 @@ export async function createApplication(options = {}) {
     cors(request, res); const url = new URL(request.url || "/", "http://localhost"); let path; try { path = decodeURIComponent(url.pathname); } catch { return fail(res, "URL 格式错误", 400); }
     if (request.method === "OPTIONS") return send(res, 204, Buffer.alloc(0));
     if (request.method === "GET" && path === "/") { res.writeHead(302, { Location: "/web/index.html" }); return res.end(); }
-    if (request.method === "GET" && path === "/health") return ok(res, { success: true, service: "node-api", runtime: process.version, local_dev: localDev, tts: voiceService.health() });
+    if (request.method === "GET" && path === "/health") return ok(res, { success: true, service: "node-api", runtime: process.version, local_dev: localDev, tts: voiceService.health(), vision: { available: vision.configured, model: vision.model } });
     if (request.method === "GET" && (path === "/web" || path.startsWith("/web/"))) return staticFile(path, res);
     if (request.method === "GET" && path === "/api/auth/captcha") {
       const code = Array.from({ length: 4 }, () => "23456789"[randomInt(8)]).join(""), token = randomBytes(24).toString("base64url"); db.prepare("INSERT INTO captcha_codes(token_hash,code_hash,expire_at,used,created_at) VALUES(?,?,?,?,?)").run(hash(token), hash(code), now(600000), 0, now());
@@ -457,6 +560,8 @@ export async function createApplication(options = {}) {
       if (request.method === "GET" && /^\/api\/admin\/user\/\d+$/.test(path)) { const detail = adminDetail(identifier(path.split("/").at(-1)), identifier(url.searchParams.get("profile_id"))); return detail ? ok(res, { success: true, ...detail }) : fail(res, "用户不存在"); } return fail(res, "Not Found", 404);
     }
     const account = user(request);
+    if (request.method === "POST" && path === "/api/companion/attachments") return trackedUpload(request, res, account, url);
+    if (["GET", "DELETE"].includes(request.method) && /^\/api\/companion\/attachments\/[a-f0-9-]{36}$/.test(path)) return attachmentFile(request, res, account, url, path.split("/").at(-1));
     if (request.method === "GET" && path === "/api/me") return account ? ok(res, { success: true, user: publicUser(account) }) : fail(res, "未登录");
     if (request.method === "GET" && path === "/api/ai/history") return account ? ok(res, { success: true, items: db.prepare("SELECT id,action,title,content,cost_points,created_at FROM generation_records WHERE user_id=? ORDER BY id DESC LIMIT 10").all(account.id) }) : fail(res, "请先登录");
     if (request.method === "POST" && path === "/api/ai/generate-outline") return generateNovel(request, res, account, "outline"); if (request.method === "POST" && path === "/api/ai/generate-content") return generateNovel(request, res, account, "content");
@@ -470,7 +575,11 @@ export async function createApplication(options = {}) {
       if (!account) return fail(res, "请先登录"); const profile = getProfile(account.id, url.searchParams.get("profile_id")); if (!profile || !identifier(url.searchParams.get("profile_id"))) return fail(res, "角色不存在");
       for (const task of db.prepare("SELECT task_id FROM companion_image_tasks WHERE user_id=? AND profile_id=? AND status IN ('pending','running')").all(account.id, profile.id)) imageControllers.get(task.task_id)?.abort();
       for (const active of chatControllers.values()) if (active.uid === account.id && active.pid === profile.id) active.controller.abort();
-      transaction(() => { db.prepare("DELETE FROM companion_messages WHERE user_id=? AND profile_id=?").run(account.id, profile.id); db.prepare("DELETE FROM companion_image_tasks WHERE user_id=? AND profile_id=?").run(account.id, profile.id); db.prepare("DELETE FROM companion_audio_generations WHERE user_id=? AND profile_id=?").run(account.id, profile.id); }); return ok(res, { success: true, message: "聊天记录已清空" });
+      for (const [controller, owner] of uploadControllers) if (owner.uid === account.id && owner.pid === profile.id) controller.abort();
+      const removedAttachments = db.prepare("SELECT id FROM companion_attachments WHERE user_id=? AND profile_id=?").all(account.id, profile.id);
+      transaction(() => { db.prepare("DELETE FROM companion_messages WHERE user_id=? AND profile_id=?").run(account.id, profile.id); db.prepare("DELETE FROM companion_image_tasks WHERE user_id=? AND profile_id=?").run(account.id, profile.id); db.prepare("DELETE FROM companion_audio_generations WHERE user_id=? AND profile_id=?").run(account.id, profile.id); db.prepare("DELETE FROM companion_vision_observations WHERE user_id=? AND profile_id=?").run(account.id, profile.id); db.prepare("DELETE FROM companion_attachments WHERE user_id=? AND profile_id=?").run(account.id, profile.id); });
+      await Promise.allSettled(removedAttachments.map(row => attachments.remove(row.id)));
+      return ok(res, { success: true, message: "聊天记录已清空" });
     }
     if (request.method === "POST" && path === "/api/companion/chat") return trackedChat(request, res, account, false); if (request.method === "POST" && path === "/api/companion/chat/stream") return trackedChat(request, res, account, true);
     if (request.method === "POST" && path === "/api/pay/alipay/create-order") {
@@ -494,8 +603,8 @@ export async function createApplication(options = {}) {
     for (const task of db.prepare("SELECT * FROM companion_image_tasks WHERE status IN ('pending','running') ORDER BY started_ms").all()) setImmediate(() => queueImageTask(task)); return server.address();
   }
   async function close() {
-    if (closing) return; closing = true; for (const controller of imageControllers.values()) controller.abort(); for (const active of chatControllers.values()) active.controller.abort(); server.closeIdleConnections();
-    await new Promise(resolveClose => { server.close(resolveClose); const timeout = setTimeout(() => { server.closeAllConnections(); resolveClose(); }, 5000); timeout.unref(); }); await Promise.allSettled([...activeChats]); db.close();
+    if (closing) return; closing = true; for (const controller of imageControllers.values()) controller.abort(); for (const active of chatControllers.values()) active.controller.abort(); for (const controller of uploadControllers.keys()) controller.abort(); server.closeIdleConnections();
+    await new Promise(resolveClose => { server.close(resolveClose); const timeout = setTimeout(() => { server.closeAllConnections(); resolveClose(); }, 5000); timeout.unref(); }); await Promise.allSettled([...activeChats, ...activeUploads]); db.close();
   }
   return { server, db, dbPath, listen, close, signToken, env };
 }
